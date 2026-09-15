@@ -1,0 +1,3 @@
+[submodule "src/shared-libs"]
+	path = src/shared-libs
+	url = https://github.com/rosahartanto6899/SELOG_WMS_2.0_Submodule_Libraries.git

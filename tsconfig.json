@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2024", 
+    "lib": [
+      "es2022",
+      "dom"
+    ],                                      
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true, 
+    "module": "commonjs", 
+    "rootDir": "./src",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "outDir": "./dist", 
+    "esModuleInterop": true, 
+    "forceConsistentCasingInFileNames": true, 
+    "strict": true, 
+    "noImplicitAny": false, 
+    "strictNullChecks": false, 
+    "strictBindCallApply": false,     
+    "noUnusedLocals": true, 
+    "noUnusedParameters": true, 
+    "noFallthroughCasesInSwitch": true,               
+    "skipLibCheck": true
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/tests"
+  ]
+}
