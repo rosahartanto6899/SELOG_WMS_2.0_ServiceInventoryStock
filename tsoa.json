@@ -1,0 +1,15 @@
+{
+  "entryFile": "src/server.ts",
+  "noImplicitAdditionalProperties": "throw-on-extras",
+  "spec": {
+    "name": "WMS Web API Inventory Service",
+    "outputDirectory": "public",
+    "specVersion": 3,
+    "specFileBaseName": "swagger"
+  },
+  "routes": {
+    "basePath": "/",
+    "routesDir": "dist"
+  },
+  "ignore": ["*/node_modules/*"]
+}
