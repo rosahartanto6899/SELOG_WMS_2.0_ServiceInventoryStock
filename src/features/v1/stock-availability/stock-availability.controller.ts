@@ -28,7 +28,7 @@ const READ = { menuCode: cst.menuCode, action: 'READ' };
 export class StockAvailabilityController extends BaseHttpController {
   private static readonly saLogging = ControllerLogging.forEntity(
     'stock-availability',
-    MICROSERVICE_IDENTIFIERS.SERVICE_ORDER,
+    MICROSERVICE_IDENTIFIERS.SERVICE_INVENTORY_STOCK,
   );
 
   constructor(

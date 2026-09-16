@@ -12,6 +12,10 @@ import logger from '@/shared-libs/utils/logger.util';
 /** Parity consumer.js (SELOG_WMS_Messaging) + hardening idempotency. */
 const MAX_MESSAGES = 10;
 const VISIBILITY_TIMEOUT = 30;
+/** Long polling 20s: 1 request per 20 detik saat idle (vs spam tanpa jeda
+ *  saat WaitTimeSeconds=0) — DNS lookup jadi jarang (ENOTFOUND di DNS
+ *  korporat flaky jarang kena) + short polling bisa miss message. */
+const WAIT_TIME_SECONDS = 20;
 /** TTL klaim idempotensi — SQS at-least-once bisa redeliver >5 menit
  *  (visibility 30s x maxReceiveCount), jadi 5 menit in-memory legacy
  *  terlalu pendek. 24 jam menutup semua skenario redeliver. */
@@ -159,7 +163,7 @@ export abstract class BaseSqsListener {
             QueueUrl: this.getQueueUrl(),
             MaxNumberOfMessages: MAX_MESSAGES,
             VisibilityTimeout: VISIBILITY_TIMEOUT,
-            WaitTimeSeconds: 0,
+            WaitTimeSeconds: WAIT_TIME_SECONDS,
           }),
         );
 
