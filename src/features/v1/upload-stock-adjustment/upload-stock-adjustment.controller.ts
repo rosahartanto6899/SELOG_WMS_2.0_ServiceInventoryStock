@@ -28,7 +28,7 @@ import { uploadStockAdjustmentConstant as cst } from './constants/upload-stock-a
 export class UploadStockAdjustmentController extends BaseHttpController {
   private static readonly usaLogging = ControllerLogging.forEntity(
     'upload-stock-adjustment',
-    MICROSERVICE_IDENTIFIERS.SERVICE_ORDER,
+    MICROSERVICE_IDENTIFIERS.SERVICE_INVENTORY_STOCK,
   );
 
   constructor(

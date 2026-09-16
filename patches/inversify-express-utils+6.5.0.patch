@@ -1,0 +1,13 @@
+diff --git a/node_modules/inversify-express-utils/lib/cjs/server.js b/node_modules/inversify-express-utils/lib/cjs/server.js
+index 8bca447..31edefd 100644
+--- a/node_modules/inversify-express-utils/lib/cjs/server.js
++++ b/node_modules/inversify-express-utils/lib/cjs/server.js
+@@ -95,7 +95,7 @@ class InversifyExpressServer {
+         // The very first middleware to be invoked
+         // it creates a new httpContext and attaches it to the
+         // current request as metadata using Reflect
+-        this._app.all('*', (req, res, next) => {
++        this._app.all('/{*splat}', (req, res, next) => {
+             void (async () => {
+                 const httpContext = await this._createHttpContext(req, res, next);
+                 Reflect.defineMetadata(constants_1.METADATA_KEY.httpContext, httpContext, req);

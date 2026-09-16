@@ -91,6 +91,12 @@ export class RedisCache {
     });
   }
 
+  // List keys matching a pattern
+  async keys(pattern: string): Promise<string[]> {
+    const redis = RedisCache.getInstance();
+    return redis.keys(pattern);
+  }
+
   // Flush all data in the current Redis database
   async flushAll(): Promise<void> {
     const redis = RedisCache.getInstance();
