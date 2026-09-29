@@ -10,7 +10,7 @@ import * as bodyParser from 'body-parser';
 import { container } from '@/shared-libs/utils';
 import { InversifyExpressServer } from 'inversify-express-utils';
 import { HandlerException } from '@/shared-libs/exceptions/handler.exception';
-import { initializeSqsListeners } from '@/listeners';
+import { initializeSqsListeners, stopSqsListeners } from '@/listeners';
 import {
   VerifyJWT,
   ResponseJson,
@@ -53,6 +53,20 @@ export async function Bootstrap() {
 
   // Start SQS listeners (guard env SQS_LISTENER_ENABLED=true)
   await initializeSqsListeners(container);
+
+  // Graceful shutdown — deploy/restart (SIGTERM) atau Ctrl-C (SIGINT):
+  // hentikan polling, drain batch in-flight, baru exit. Tanpa ini proses
+  // dipotong di tengah transaksi (rollback + klaim yatim menunggu stale).
+  const shutdown = async (signal: string) => {
+    console.log(`${signal} received — stopping SQS listeners (draining)...`);
+    try {
+      await stopSqsListeners(container);
+    } finally {
+      process.exit(0);
+    }
+  };
+  process.once('SIGTERM', () => void shutdown('SIGTERM'));
+  process.once('SIGINT', () => void shutdown('SIGINT'));
 
   await retry(
     async (bail) => {

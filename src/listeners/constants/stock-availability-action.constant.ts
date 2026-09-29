@@ -1,13 +1,13 @@
 /**
- * ActionType semantics — parity SP live wms-inventorystock-dev
+ * ActionType semantics — parity with live SPs wms-inventorystock-dev
  * (usp_LogStockAvailability & usp_InsertUpdateStockAvailability,
- * diekstrak via OBJECT_DEFINITION; lihat specs/…sqs-listener_reverse_spec.md).
+ * extracted via OBJECT_DEFINITION; see specs/…sqs-listener_reverse_spec.md).
  */
 
 export type StockDelta = 'plus' | 'minus' | 'none';
 
-/** Grup delta QtySOH — UNTUK LOG (QtySOHAfter). Perhatikan: '' (string
- *  kosong) ikut plus di SP log, tapi TIDAK di SP upsert. */
+/** QtySOH delta group — FOR LOGGING (QtySOHAfter). Note: '' (empty
+ *  string) counts as plus in the log SP, but NOT in the upsert SP. */
 export function logDelta(actionType: string): StockDelta {
   if (['WHSIN1', 'WHSIN2', 'WHSREVIN', '', 'WHSOUTX', 'WHSCLOUT'].includes(actionType))
     return 'plus';
@@ -16,7 +16,7 @@ export function logDelta(actionType: string): StockDelta {
   return 'none';
 }
 
-/** Grup delta QtySOH — UNTUK UPSERT stock existing (MERGE MATCHED). */
+/** QtySOH delta group — FOR UPSERT of existing stock (MERGE MATCHED). */
 export function upsertDelta(actionType: string): StockDelta {
   if (['WHSIN1', 'WHSIN2', 'WHSREVIN', 'WHSOUTX', 'WHSCLOUT'].includes(actionType))
     return 'plus';
@@ -25,7 +25,7 @@ export function upsertDelta(actionType: string): StockDelta {
   return 'none';
 }
 
-/** QtySOH row BARU (MERGE NOT MATCHED) — negatif utk WHSOUT/WHSREVOUT. */
+/** QtySOH for a NEW row (MERGE NOT MATCHED) — negative for WHSOUT/WHSREVOUT. */
 export function insertQty(actionType: string, qty: number): number {
   return actionType === 'WHSOUT' || actionType === 'WHSREVOUT' ? -qty : qty;
 }
@@ -46,8 +46,8 @@ export function transactionType(actionType: string): string {
   return map[actionType] ?? 'Unknown';
 }
 
-/** Row PascalCase SQS — parity StockAvailabilityDto CoreApp + publisher
- *  aws-sqs.third.ts (StockAvailabilityMessage). */
+/** PascalCase SQS row — parity with CoreApp StockAvailabilityDto +
+ *  publisher aws-sqs.third.ts (StockAvailabilityMessage). */
 export interface StockAvailabilitySqsRow {
   ID?: number | null;
   CustomerCode?: string | null;

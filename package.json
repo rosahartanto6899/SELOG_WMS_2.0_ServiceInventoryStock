@@ -12,7 +12,7 @@
     "start": "npm-run-all serve",
     "start:dev": "export NODE_OPTIONS=set IS_NON_CLUSTER=1 && nodemon -r tsconfig-paths/register src/app.ts",
     "lint": "tslint '*.ts'",
-    "test": "mocha --timeout=10000 -r tsconfig-paths/register -r node_modules/ts-node/register \"src/tests/**/*.test.ts\" -exit",
+    "test": "mocha --timeout=10000 -r tsconfig-paths/register -r node_modules/ts-node/register \"src/tests/**/*.test.ts\" --exit",
     "test:coverage": "nyc mocha --timeout=10000 -r tsconfig-paths/register -r node_modules/ts-node/register \"src/tests/**/*.test.ts\" -exit",
     "gen:swag": "ts-node -r tsconfig-paths/register src/utils/swagger.util.ts"
   },

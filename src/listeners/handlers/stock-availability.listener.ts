@@ -18,20 +18,20 @@ import { UniqueIdGenerator } from '@/shared-libs/utils/unique-id-generator.util'
 import { nowWib, sequelize } from '@/utils';
 
 /**
- * Listener SQS queue inventorystock-stockavailability — parity consumer.js
- * (SELOG_WMS_Messaging) + SP usp_LogStockAvailability & lalu
- * usp_InsertUpdateStockAvailability (definisi diverifikasi dari dev DB).
- * Port ke Sequelize dalam SATU transaction: log memakai qty before
- * pre-update, kemudian upsert grouped per natural key — efek net identik
- * urutan dua SP legacy (lihat specs/stock-availability-sqs-listener_reverse_spec.md).
+ * SQS listener for queue inventorystock-stockavailability — parity with
+ * consumer.js (SELOG_WMS_Messaging) + SP usp_LogStockAvailability then
+ * usp_InsertUpdateStockAvailability (definitions verified from the dev DB).
+ * Ported to Sequelize in ONE transaction: logs use the pre-update qty,
+ * then upsert grouped per natural key — net effect identical to the
+ * two legacy SPs' order (see specs/stock-availability-sqs-listener_reverse_spec.md).
  */
 @injectable()
 export class StockAvailabilityListener extends BaseSqsListener {
   readonly queueName = process.env.SQS_QUEUE_INVENTORY_STOCK ?? '';
 
-  /** Kunci idempotensi = hash payload BISNIS tanpa LogId — publisher retry
-   *  menghasilkan LogId UUID baru; tanpa ini pesan retry dianggap beda dan
-   *  qty dobel-apply. */
+  /** Idempotency key = hash of the BUSINESS payload without LogId — a
+   *  publisher retry produces a new UUID LogId; without this the retried
+   *  message looks different and the qty is double-applied. */
   protected buildDedupKey(rawBody: string): string {
     let normalized = rawBody;
     try {
@@ -41,7 +41,7 @@ export class StockAvailabilityListener extends BaseSqsListener {
         normalized = JSON.stringify(rest);
       }
     } catch {
-      // body tak valid → pakai raw; processMessage akan permanent-fail
+      // invalid body → use raw; processMessage will permanent-fail
     }
     return createHash('sha256').update(normalized).digest('hex');
   }
@@ -50,7 +50,7 @@ export class StockAvailabilityListener extends BaseSqsListener {
     const message = body as StockAvailabilitySqsMessage;
     const rows = message?.StockAvailabilityDtos;
 
-    // Validasi permanen — retry tidak memperbaiki payload rusak.
+    // Permanent validation — retrying won't fix a broken payload.
     if (!Array.isArray(rows) || rows.length === 0) {
       throw new PermanentMessageError('StockAvailabilityDtos is empty');
     }
@@ -61,8 +61,9 @@ export class StockAvailabilityListener extends BaseSqsListener {
     if (!userBy || typeof userBy !== 'string') {
       throw new PermanentMessageError(`Invalid UserBy: ${message.UserBy}`);
     }
-    // Field kunci natural wajib — NULL lolos UQ check bisa poison-loop
-    // (insert NULL-key gagal berulang, tidak pernah jadi update path).
+    // Natural key fields are required — NULL sneaking past the UQ check can
+    // poison-loop (NULL-key insert fails repeatedly, never becomes an
+    // update path).
     rows.forEach((row, i) => {
       if (!row.CustomerCode || !row.WarehouseCode || !row.MaterialCode) {
         throw new PermanentMessageError(
@@ -72,7 +73,7 @@ export class StockAvailabilityListener extends BaseSqsListener {
     });
 
     await sequelize.transaction(async (transaction: Transaction) => {
-      // === SP 1: usp_LogStockAvailability — per ROW, before pre-update ===
+      // === SP 1: usp_LogStockAvailability — per ROW, qty before the update ===
       await this.insertLogs(rows, message.ActionType, userBy, transaction);
 
       // === SP 2: usp_InsertUpdateStockAvailability — grouped MERGE ===
@@ -167,7 +168,7 @@ export class StockAvailabilityListener extends BaseSqsListener {
             materialBrand: row.MaterialBrand ?? null,
             uom: row.UoM ?? null,
             qtySOH: insertQty(actionType, qty),
-            // parity SP insert: QtyPlan* tidak diisi (NULL), Modified* diisi
+            // parity with SP insert: QtyPlan* not set (NULL), Modified* set
             qtyPlanIncoming: null,
             qtyPlanOutgoing: null,
             isActive: true,
@@ -198,10 +199,10 @@ export class StockAvailabilityListener extends BaseSqsListener {
     };
     const options: FindOptions = { where, transaction };
     if (lock && transaction) {
-      // options.lock DIABAIKAN Sequelize mssql (dialect supports.lock=false)
-      // → SELECT polos → read-modify-write konkuren = lost update (qty
-      // salah). tableHint merender WITH (UPDLOCK) — RMW per baris
-      // terserialisasi; insert race tetap dicegat UQ di DB.
+      // Sequelize mssql IGNORES options.lock (dialect supports.lock=false)
+      // → plain SELECT → concurrent read-modify-write = lost update (wrong
+      // qty). tableHint renders WITH (UPDLOCK) — per-row RMW is serialized;
+      // insert races are still blocked by the DB UQ.
       (options as { tableHint?: TableHints }).tableHint = TableHints.UPDLOCK;
     }
     return StockAvailability.findOne(options);
