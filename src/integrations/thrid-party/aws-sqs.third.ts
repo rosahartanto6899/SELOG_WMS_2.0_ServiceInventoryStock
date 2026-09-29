@@ -1,4 +1,4 @@
-import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
+import { SQSClient, SendMessageCommand, GetQueueAttributesCommand } from '@aws-sdk/client-sqs';
 import { randomUUID } from 'node:crypto';
 
 /**
@@ -64,6 +64,18 @@ class AwsSqsThird {
 
   private getInventoryQueueUrl(): string {
     return `https://sqs.${process.env.SQS_REGION}.amazonaws.com/${process.env.SQS_QUEUE_ID}/${process.env.SQS_QUEUE_INVENTORY_STOCK}`;
+  }
+
+  /** Healthcheck /v1/health/sqs — GetQueueAttributes (read-only) pada queue
+   *  inventory stock; requestTimeout pendek agar endpoint tidak menggantung. */
+  public async checkHealth(): Promise<void> {
+    await this.getClient().send(
+      new GetQueueAttributesCommand({
+        QueueUrl: this.getInventoryQueueUrl(),
+        AttributeNames: ['ApproximateNumberOfMessages'],
+      }),
+      { requestTimeout: 3000 },
+    );
   }
 
   /**

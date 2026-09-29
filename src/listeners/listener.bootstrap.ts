@@ -4,9 +4,9 @@ import { BaseSqsListener } from './base-sqs-listener';
 import { SQS_LISTENER_CONFIG } from './listener.config';
 
 /**
- * Initialize + start listener SQS — pola listener.bootstrap ServiceBilling,
- * transport SQS (parity consumer.js legacy). Dipanggil server.ts setelah
- * koneksi DB siap.
+ * Initialize + start SQS listeners — listener.bootstrap pattern from
+ * ServiceBilling, SQS transport (parity with legacy consumer.js). Called by
+ * server.ts once the DB connection is ready.
  */
 export async function initializeSqsListeners(
   container: Container,

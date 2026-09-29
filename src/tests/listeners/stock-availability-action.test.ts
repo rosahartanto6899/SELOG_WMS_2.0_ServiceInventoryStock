@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import {
   insertQty,
   logDelta,
@@ -12,43 +13,43 @@ import { PermanentMessageError } from '@/listeners/base-sqs-listener';
 describe('stock availability ActionType mapping', () => {
   it('logDelta: plus / minus / none termasuk quirk string kosong', () => {
     // '' ikut plus di SP LOG (quirk)...
-    expect(logDelta('')).toBe('plus');
+    assert.equal(logDelta(''), 'plus');
     ['WHSIN1', 'WHSIN2', 'WHSREVIN', 'WHSOUTX', 'WHSCLOUT'].forEach((a) =>
-      expect(logDelta(a)).toBe('plus'),
+      assert.equal(logDelta(a), 'plus'),
     );
     ['WHSINX', 'WHSOUT', 'WHSREVOUT', 'WHSCLIN'].forEach((a) =>
-      expect(logDelta(a)).toBe('minus'),
+      assert.equal(logDelta(a), 'minus'),
     );
     // ...tapi '' TIDAK plus di SP UPSERT
-    expect(upsertDelta('')).toBe('none');
+    assert.equal(upsertDelta(''), 'none');
     ['WHSIN1', 'WHSIN2', 'WHSREVIN', 'WHSOUTX', 'WHSCLOUT'].forEach((a) =>
-      expect(upsertDelta(a)).toBe('plus'),
+      assert.equal(upsertDelta(a), 'plus'),
     );
     ['WHSOUT', 'WHSREVOUT', 'WHSINX', 'WHSCLIN'].forEach((a) =>
-      expect(upsertDelta(a)).toBe('minus'),
+      assert.equal(upsertDelta(a), 'minus'),
     );
-    expect(logDelta('WHATEVER')).toBe('none');
-    expect(upsertDelta('WHATEVER')).toBe('none');
+    assert.equal(logDelta('WHATEVER'), 'none');
+    assert.equal(upsertDelta('WHATEVER'), 'none');
   });
 
   it('insertQty: negatif hanya utk WHSOUT/WHSREVOUT (row baru)', () => {
-    expect(insertQty('WHSOUT', 5)).toBe(-5);
-    expect(insertQty('WHSREVOUT', 5)).toBe(-5);
-    expect(insertQty('WHSIN2', 5)).toBe(5);
-    expect(insertQty('WHSINX', 5)).toBe(5); // INX insert tetap positif
+    assert.equal(insertQty('WHSOUT', 5), -5);
+    assert.equal(insertQty('WHSREVOUT', 5), -5);
+    assert.equal(insertQty('WHSIN2', 5), 5);
+    assert.equal(insertQty('WHSINX', 5), 5); // INX insert tetap positif
   });
 
   it('transactionType: mapping lengkap + Unknown', () => {
-    expect(transactionType('WHSIN1')).toBe('Actual Plan Incoming');
-    expect(transactionType('WHSIN2')).toBe('Binning');
-    expect(transactionType('WHSREVIN')).toBe('Binning Revision');
-    expect(transactionType('WHSINX')).toBe('Actual Incoming Delete');
-    expect(transactionType('WHSOUT')).toBe('Picking');
-    expect(transactionType('WHSREVOUT')).toBe('Picking Revision');
-    expect(transactionType('WHSOUTX')).toBe('Actual Plan Outgoing Delete');
-    expect(transactionType('WHSCLIN')).toBe('PO Cancellation');
-    expect(transactionType('WHSCLOUT')).toBe('DO Cancellation');
-    expect(transactionType('NOPE')).toBe('Unknown');
+    assert.equal(transactionType('WHSIN1'), 'Actual Plan Incoming');
+    assert.equal(transactionType('WHSIN2'), 'Binning');
+    assert.equal(transactionType('WHSREVIN'), 'Binning Revision');
+    assert.equal(transactionType('WHSINX'), 'Actual Incoming Delete');
+    assert.equal(transactionType('WHSOUT'), 'Picking');
+    assert.equal(transactionType('WHSREVOUT'), 'Picking Revision');
+    assert.equal(transactionType('WHSOUTX'), 'Actual Plan Outgoing Delete');
+    assert.equal(transactionType('WHSCLIN'), 'PO Cancellation');
+    assert.equal(transactionType('WHSCLOUT'), 'DO Cancellation');
+    assert.equal(transactionType('NOPE'), 'Unknown');
   });
 
   it('dedup key: stabil terhadap LogId (publisher retry), sensitif terhadap payload bisnis', () => {
@@ -67,11 +68,11 @@ describe('stock availability ActionType mapping', () => {
       });
 
     // retry publisher = LogId beda → hash SAMA → dedup menangkap
-    expect(key(body('uuid-1'))).toBe(key(body('uuid-2')));
+    assert.equal(key(body('uuid-1')), key(body('uuid-2')));
     // event bisnis beda → hash beda
     const different = JSON.parse(body('uuid-1'));
     different.ActionType = 'WHSOUT';
-    expect(key(JSON.stringify(different))).not.toBe(key(body('uuid-1')));
+    assert.notEqual(key(JSON.stringify(different)), key(body('uuid-1')));
   });
 
   it('validasi permanen: payload rusak → PermanentMessageError (pesan di-delete, bukan loop)', async () => {
@@ -83,7 +84,8 @@ describe('stock availability ActionType mapping', () => {
       { StockAvailabilityDtos: [{ CustomerCode: 'C', WarehouseCode: 'W' }], ActionType: 'WHSIN2', UserBy: 'u' },
     ];
     for (const c of cases) {
-      await expect(listener.processMessage(c)).rejects.toBeInstanceOf(
+      await assert.rejects(
+        listener.processMessage(c),
         PermanentMessageError,
       );
     }
