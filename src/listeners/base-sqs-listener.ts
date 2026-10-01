@@ -110,9 +110,10 @@ export abstract class BaseSqsListener {
   protected abstract processMessage(body: unknown): Promise<void>;
 
   /**
-   * Idempotency key from the RAW BODY. Default: sha256(body). Override when
-   * the payload has a field that changes on every publish (e.g. LogId UUID)
-   * so publisher retries don't slip through as different messages.
+   * Idempotency key from the RAW BODY. Default: sha256(body) — catches SQS
+   * redeliveries (byte-identical body). Do NOT strip per-event fields
+   * (e.g. LogId) to "catch publisher retries": distinct legitimate events
+   * with identical business payload then collide and get dropped.
    */
   protected buildDedupKey(rawBody: string): string {
     return createHash('sha256').update(rawBody).digest('hex');
@@ -256,7 +257,10 @@ export abstract class BaseSqsListener {
     // again — never double-applied. (Deleting the claim here would make a
     // redelivery reprocess an already-committed event.)
     await this.deleteMessage(receiptHandle);
-    logger.info(`SQS message processed and deleted: ${key.slice(-12)}`);
+    logger.info({
+      message: `SQS message processed and deleted: ${key.slice(-12)}`,
+      payload: parseBody(rawBody),
+    });
   }
 
   /**

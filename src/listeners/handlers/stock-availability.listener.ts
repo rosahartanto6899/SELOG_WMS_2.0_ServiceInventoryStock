@@ -1,6 +1,5 @@
 import { injectable } from 'inversify';
 import { FindOptions, TableHints, Transaction, WhereOptions } from 'sequelize';
-import { createHash } from 'node:crypto';
 import { BaseSqsListener, PermanentMessageError } from '../base-sqs-listener';
 import {
   StockAvailabilitySqsMessage,
@@ -29,22 +28,10 @@ import { nowWib, sequelize } from '@/utils';
 export class StockAvailabilityListener extends BaseSqsListener {
   readonly queueName = process.env.SQS_QUEUE_INVENTORY_STOCK ?? '';
 
-  /** Idempotency key = hash of the BUSINESS payload without LogId — a
-   *  publisher retry produces a new UUID LogId; without this the retried
-   *  message looks different and the qty is double-applied. */
-  protected buildDedupKey(rawBody: string): string {
-    let normalized = rawBody;
-    try {
-      const parsed = JSON.parse(rawBody);
-      if (parsed && typeof parsed === 'object' && 'LogId' in parsed) {
-        const { LogId: _drop, ...rest } = parsed;
-        normalized = JSON.stringify(rest);
-      }
-    } catch {
-      // invalid body → use raw; processMessage will permanent-fail
-    }
-    return createHash('sha256').update(normalized).digest('hex');
-  }
+  // No buildDedupKey override: LogId is the ONLY per-event-unique field —
+  // stripping it made two legit identical binnings (10 + 10) collide into
+  // one claim and the second was dropped as a "duplicate". Default hash of
+  // the full body still dedups SQS redeliveries (byte-identical body).
 
   async processMessage(body: unknown): Promise<void> {
     const message = body as StockAvailabilitySqsMessage;
