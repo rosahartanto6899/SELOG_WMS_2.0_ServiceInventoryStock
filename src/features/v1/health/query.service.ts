@@ -1,6 +1,7 @@
 import { injectable } from 'inversify';
 import { databaseManager } from '@/utils';
 import { awsSqsThird } from '@/integrations/thrid-party/aws-sqs.third';
+import { RedisCache } from '@/integrations/thrid-party/redis.third';
 
 /** Entri komponen healthcheck — parity respons /healthcheck-sql WMS_Incoming. */
 export interface ComponentHealth {
@@ -21,6 +22,22 @@ export class QueryService {
     } catch (error) {
       return {
         component: 'sqlserver',
+        status: 'Unhealthy',
+        description: 'Service Unhealthy',
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /** Redis — PING ≈ healthcheck connection. */
+  async checkRedis(): Promise<ComponentHealth> {
+    try {
+      const pong = await RedisCache.getInstance().ping();
+      if (pong !== 'PONG') throw new Error(`unexpected reply: ${pong}`);
+      return { component: 'redis', status: 'Healthy', description: null, error: null };
+    } catch (error) {
+      return {
+        component: 'redis',
         status: 'Unhealthy',
         description: 'Service Unhealthy',
         error: error instanceof Error ? error.message : String(error),
